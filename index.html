@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>App Download QR</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #17202a;
+      --muted: #5f6b7a;
+      --line: #d8dee6;
+      --primary: #075eb5;
+      --primary-dark: #044b92;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    main {
+      width: min(100%, 560px);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 28px;
+      box-shadow: 0 8px 24px rgba(23, 32, 42, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    button,
+    .store-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 16px;
+      background: var(--primary);
+      color: #ffffff;
+      font: inherit;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    button:hover,
+    .store-link:hover {
+      background: var(--primary-dark);
+    }
+
+    .secondary {
+      background: #eef3f8;
+      color: var(--text);
+    }
+
+    .secondary:hover {
+      background: #dfe8f2;
+    }
+
+    .actions,
+    .store-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .qr-wrap {
+      display: grid;
+      place-items: center;
+      margin: 22px 0 14px;
+    }
+
+    .link-box {
+      overflow-wrap: anywhere;
+      background: #f7f9fb;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: left;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .note {
+      margin-top: 14px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section id="downloadView" class="hidden">
+      <h1 id="downloadTitle">Download App</h1>
+      <p>Opening the correct app store for your device.</p>
+      <div class="store-actions">
+        <a id="iosButton" class="store-link" href="#">Download on App Store</a>
+        <a id="androidButton" class="store-link" href="#">Get it on Google Play</a>
+      </div>
+    </section>
+
+    <section id="generatorView" class="hidden">
+      <h1>App Download QR</h1>
+      <p>Enter your iOS and Android store links. This page will generate one QR link that sends users to the correct store.</p>
+
+      <label for="appName">App name</label>
+      <input id="appName" placeholder="Example: Mobile Banking App">
+
+      <label for="iosUrl">iOS App Store link</label>
+      <input id="iosUrl" placeholder="https://apps.apple.com/app/...">
+
+      <label for="androidUrl">Android Play Store link</label>
+      <input id="androidUrl" placeholder="https://play.google.com/store/apps/details?id=...">
+
+      <div class="actions">
+        <button id="generateButton" type="button">Generate QR Code</button>
+        <button id="clearButton" class="secondary" type="button">Clear</button>
+      </div>
+
+      <div id="qrBlock" class="hidden">
+        <div id="qrcode" class="qr-wrap"></div>
+        <div id="smartLink" class="link-box"></div>
+        <p class="note">Use this generated link for your QR code. The same QR works for iOS and Android.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // For cleaner future app links, add app entries here and use ?app=bankapp.
+    const configuredApps = {
+      demo: {
+        name: "Demo App",
+        ios: "https://apps.apple.com/us/app/jigsaw-puzzles-puzzle-games/id1324604053",
+        android: "https://play.google.com/store/apps/details?id=com.easybrain.jigsaw.puzzles&hl=en_IN"
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const appKey = params.get("app");
+    const appFromConfig = appKey ? configuredApps[appKey] : null;
+    const directApp = {
+      name: params.get("name") || "Download App",
+      ios: params.get("ios") || "",
+      android: params.get("android") || ""
+    };
+    const selectedApp = appFromConfig || (directApp.ios && directApp.android ? directApp : null);
+
+    if (selectedApp) {
+      showDownloadView(selectedApp);
+    } else {
+      showGeneratorView();
+    }
+
+    function showDownloadView(app) {
+      document.getElementById("downloadView").classList.remove("hidden");
+      document.getElementById("downloadTitle").textContent = app.name || "Download App";
+      document.getElementById("iosButton").href = app.ios;
+      document.getElementById("androidButton").href = app.android;
+
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      const isiPadOnModernIOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+
+      if (/android/i.test(userAgent)) {
+        window.location.replace(app.android);
+        return;
+      }
+
+      if (/iPad|iPhone|iPod/.test(userAgent) || isiPadOnModernIOS) {
+        window.location.replace(app.ios);
+      }
+    }
+
+    function showGeneratorView() {
+      document.getElementById("generatorView").classList.remove("hidden");
+      document.getElementById("generateButton").addEventListener("click", generateQrCode);
+      document.getElementById("clearButton").addEventListener("click", clearForm);
+    }
+
+    function generateQrCode() {
+      const name = document.getElementById("appName").value.trim() || "Download App";
+      const ios = document.getElementById("iosUrl").value.trim();
+      const android = document.getElementById("androidUrl").value.trim();
+
+      if (!isValidUrl(ios) || !isValidUrl(android)) {
+        alert("Please enter valid HTTPS iOS and Android store links.");
+        return;
+      }
+
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.searchParams.set("name", name);
+      url.searchParams.set("ios", ios);
+      url.searchParams.set("android", android);
+
+      const finalUrl = url.toString();
+      const qrElement = document.getElementById("qrcode");
+      qrElement.innerHTML = "";
+
+      new QRCode(qrElement, {
+        text: finalUrl,
+        width: 220,
+        height: 220
+      });
+
+      document.getElementById("smartLink").textContent = finalUrl;
+      document.getElementById("qrBlock").classList.remove("hidden");
+    }
+
+    function clearForm() {
+      document.getElementById("appName").value = "";
+      document.getElementById("iosUrl").value = "";
+      document.getElementById("androidUrl").value = "";
+      document.getElementById("qrcode").innerHTML = "";
+      document.getElementById("smartLink").textContent = "";
+      document.getElementById("qrBlock").classList.add("hidden");
+    }
+
+    function isValidUrl(value) {
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }
+  </script>
+</body>
+</html>
