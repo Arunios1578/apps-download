@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Apps Download QR Code</title>
+  <title>Apps Download QRCode</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -15,6 +15,7 @@
       --line: #d8dee6;
       --primary: #075eb5;
       --primary-dark: #044b92;
+      --success: #1f7a4d;
     }
 
     * {
@@ -91,6 +92,11 @@
       background: var(--primary-dark);
     }
 
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
     .secondary {
       background: #eef3f8;
       color: var(--text);
@@ -105,6 +111,23 @@
       display: grid;
       gap: 10px;
       margin-top: 18px;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      margin: 12px 0 22px;
+    }
+
+    .app-button {
+      background: #ffffff;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .app-button:hover {
+      background: #eef6ff;
     }
 
     .qr-wrap {
@@ -122,6 +145,19 @@
       color: var(--muted);
       font-size: 14px;
       text-align: left;
+    }
+
+    .status {
+      min-height: 20px;
+      margin: 10px 0 0;
+      color: var(--success);
+      font-size: 13px;
+    }
+
+    .divider {
+      height: 1px;
+      margin: 24px 0;
+      background: var(--line);
     }
 
     .hidden {
@@ -147,7 +183,14 @@
 
     <section id="generatorView" class="hidden">
       <h1>App Download QR</h1>
-      <p>Enter your iOS and Android store links. This page will generate one QR link that sends users to the correct store.</p>
+      <p>Select a configured app or enter store links manually. Both options create one smart link and one QR code for iOS and Android.</p>
+
+      <div id="configuredAppsSection" class="hidden">
+        <label>Configured apps</label>
+        <div id="configuredAppButtons" class="app-grid"></div>
+      </div>
+
+      <div class="divider"></div>
 
       <label for="appName">App name</label>
       <input id="appName" placeholder="Example: Mobile Banking App">
@@ -165,26 +208,32 @@
 
       <div id="qrBlock" class="hidden">
         <div id="qrcode" class="qr-wrap"></div>
+        <label for="smartLink">Smart download link</label>
         <div id="smartLink" class="link-box"></div>
-        <p class="note">Use this generated link for your QR code. The same QR works for iOS and Android.</p>
+        <div class="actions">
+          <button id="copyLinkButton" type="button">Copy Link</button>
+          <button id="openLinkButton" class="secondary" type="button">Open Link</button>
+        </div>
+        <p id="copyStatus" class="status"></p>
+        <p class="note">Share either the QR code or the smart download link. Both open the correct app store based on the user's device.</p>
       </div>
     </section>
   </main>
 
   <script>
     // For cleaner future app links, add app entries here and use ?app=bankapp.
-const configuredApps = {
-  demo: {
+    const configuredApps = {
+      demo: {
         name: "Demo App",
         ios: "https://apps.apple.com/us/app/jigsaw-puzzles-puzzle-games/id1324604053",
         android: "https://play.google.com/store/apps/details?id=com.easybrain.jigsaw.puzzles&hl=en_IN"
-        },
-  puzzleapp: {
-         name: "Puzzle App",
-         ios: "https://apps.apple.com/us/app/block-out-color-sort-puzzle/id6752672568",
-         android: "https://play.google.com/store/apps/details?id=com.sg.block.out&hl=en_IN"
-       }
-   };
+      },
+      puzzleApp: {
+        name: "Puzzle App",
+        ios: "https://apps.apple.com/us/app/block-out-color-sort-puzzle/id6752672568",
+        android: "https://play.google.com/store/apps/details?id=com.sg.block.out&hl=en_IN"
+      }
+    };
 
     const params = new URLSearchParams(window.location.search);
     const appKey = params.get("app");
@@ -225,6 +274,30 @@ const configuredApps = {
       document.getElementById("generatorView").classList.remove("hidden");
       document.getElementById("generateButton").addEventListener("click", generateQrCode);
       document.getElementById("clearButton").addEventListener("click", clearForm);
+      document.getElementById("copyLinkButton").addEventListener("click", copySmartLink);
+      document.getElementById("openLinkButton").addEventListener("click", openSmartLink);
+      renderConfiguredAppButtons();
+    }
+
+    function renderConfiguredAppButtons() {
+      const appEntries = Object.entries(configuredApps);
+      const buttonsWrap = document.getElementById("configuredAppButtons");
+      buttonsWrap.innerHTML = "";
+
+      if (!appEntries.length) {
+        return;
+      }
+
+      appEntries.forEach(([key, app]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "app-button";
+        button.textContent = app.name || key;
+        button.addEventListener("click", () => generateConfiguredAppQr(key));
+        buttonsWrap.appendChild(button);
+      });
+
+      document.getElementById("configuredAppsSection").classList.remove("hidden");
     }
 
     function generateQrCode() {
@@ -237,13 +310,16 @@ const configuredApps = {
         return;
       }
 
-      const url = new URL(window.location.href);
-      url.search = "";
-      url.searchParams.set("name", name);
-      url.searchParams.set("ios", ios);
-      url.searchParams.set("android", android);
+      const finalUrl = buildDirectSmartLink(name, ios, android);
+      showQrResult(finalUrl);
+    }
 
-      const finalUrl = url.toString();
+    function generateConfiguredAppQr(appKey) {
+      const finalUrl = buildConfiguredAppSmartLink(appKey);
+      showQrResult(finalUrl);
+    }
+
+    function showQrResult(finalUrl) {
       const qrElement = document.getElementById("qrcode");
       qrElement.innerHTML = "";
 
@@ -254,6 +330,7 @@ const configuredApps = {
       });
 
       document.getElementById("smartLink").textContent = finalUrl;
+      document.getElementById("copyStatus").textContent = "";
       document.getElementById("qrBlock").classList.remove("hidden");
     }
 
@@ -263,7 +340,45 @@ const configuredApps = {
       document.getElementById("androidUrl").value = "";
       document.getElementById("qrcode").innerHTML = "";
       document.getElementById("smartLink").textContent = "";
+      document.getElementById("copyStatus").textContent = "";
       document.getElementById("qrBlock").classList.add("hidden");
+    }
+
+    function buildConfiguredAppSmartLink(appKey) {
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.searchParams.set("app", appKey);
+      return url.toString();
+    }
+
+    function buildDirectSmartLink(name, ios, android) {
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.searchParams.set("name", name);
+      url.searchParams.set("ios", ios);
+      url.searchParams.set("android", android);
+      return url.toString();
+    }
+
+    async function copySmartLink() {
+      const smartLink = document.getElementById("smartLink").textContent;
+      if (!smartLink) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(smartLink);
+        document.getElementById("copyStatus").textContent = "Link copied.";
+      } catch {
+        document.getElementById("copyStatus").textContent = "Copy failed. Select and copy the link manually.";
+      }
+    }
+
+    function openSmartLink() {
+      const smartLink = document.getElementById("smartLink").textContent;
+      if (smartLink) {
+        window.open(smartLink, "_blank", "noopener,noreferrer");
+      }
     }
 
     function isValidUrl(value) {
