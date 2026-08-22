@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>App Download QR</title>
+  <title>Apps Download QR Code</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -178,13 +178,13 @@ const configuredApps = {
         name: "Demo App",
         ios: "https://apps.apple.com/us/app/jigsaw-puzzles-puzzle-games/id1324604053",
         android: "https://play.google.com/store/apps/details?id=com.easybrain.jigsaw.puzzles&hl=en_IN"
-  },
-  puzzleApp: {
-    name: "Puzzle App",
-    ios: "https://apps.apple.com/us/app/block-out-color-sort-puzzle/id6752672568",
-    android: "https://play.google.com/store/apps/details?id=com.sg.block.out&hl=en_IN"
-  }
-};
+        },
+  puzzleapp: {
+         name: "Puzzle App",
+         ios: "https://apps.apple.com/us/app/block-out-color-sort-puzzle/id6752672568",
+         android: "https://play.google.com/store/apps/details?id=com.sg.block.out&hl=en_IN"
+       }
+   };
 
     const params = new URLSearchParams(window.location.search);
     const appKey = params.get("app");
