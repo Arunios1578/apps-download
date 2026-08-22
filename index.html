@@ -200,27 +200,11 @@
 
     <section id="generatorView" class="hidden">
       <h1>App Download QR</h1>
-      <p>Select a configured app or enter store links manually. Both options create one smart link and one QR code for iOS and Android.</p>
+      <p>Select an app to create a safe smart link and QR code for iOS and Android.</p>
 
       <div id="configuredAppsSection" class="hidden">
         <label>Configured apps</label>
         <div id="configuredAppButtons" class="app-grid"></div>
-      </div>
-
-      <div class="divider"></div>
-
-      <label for="appName">App name</label>
-      <input id="appName" placeholder="Example: Mobile Banking App">
-
-      <label for="iosUrl">iOS App Store link</label>
-      <input id="iosUrl" placeholder="https://apps.apple.com/app/...">
-
-      <label for="androidUrl">Android Play Store link</label>
-      <input id="androidUrl" placeholder="https://play.google.com/store/apps/details?id=...">
-
-      <div class="actions">
-        <button id="generateButton" type="button">Generate QR Code</button>
-        <button id="clearButton" class="secondary" type="button">Clear</button>
       </div>
 
       <div id="qrBlock" class="hidden">
@@ -232,7 +216,7 @@
           <button id="openLinkButton" class="secondary" type="button">Open Link</button>
         </div>
         <p id="copyStatus" class="status"></p>
-        <p class="note">Share either the QR code or the smart download link. Both open the correct app store based on the user's device.</p>
+        <p id="resultNote" class="note">Share either the QR code or the smart download link. Both open the correct app store based on the user's device.</p>
       </div>
     </section>
   </main>
@@ -255,15 +239,11 @@
     const params = new URLSearchParams(window.location.search);
     const appKey = params.get("app");
     const appFromConfig = appKey ? configuredApps[appKey] : null;
-    const directApp = {
-      name: params.get("name") || "Download App",
-      ios: params.get("ios") || "",
-      android: params.get("android") || ""
-    };
-    const selectedApp = appFromConfig || (directApp.ios && directApp.android ? directApp : null);
 
-    if (selectedApp) {
-      showDownloadView(selectedApp);
+    if (appFromConfig) {
+      showDownloadView(appFromConfig);
+    } else if (appKey) {
+      showInvalidAppView();
     } else {
       showGeneratorView();
     }
@@ -292,6 +272,13 @@
       document.getElementById("downloadMessage").textContent = "Choose your app store to continue.";
     }
 
+    function showInvalidAppView() {
+      document.getElementById("downloadView").classList.remove("hidden");
+      document.getElementById("downloadTitle").textContent = "Invalid App Link";
+      document.getElementById("downloadMessage").textContent = "This app is not configured. Please use an official app download link.";
+      document.getElementById("storeActions").classList.add("hidden");
+    }
+
     function redirectToStore(storeUrl) {
       document.getElementById("storeActions").classList.add("hidden");
       document.getElementById("redirectSpinner").classList.remove("hidden");
@@ -306,8 +293,6 @@
 
     function showGeneratorView() {
       document.getElementById("generatorView").classList.remove("hidden");
-      document.getElementById("generateButton").addEventListener("click", generateQrCode);
-      document.getElementById("clearButton").addEventListener("click", clearForm);
       document.getElementById("copyLinkButton").addEventListener("click", copySmartLink);
       document.getElementById("openLinkButton").addEventListener("click", openSmartLink);
       renderConfiguredAppButtons();
@@ -334,26 +319,12 @@
       document.getElementById("configuredAppsSection").classList.remove("hidden");
     }
 
-    function generateQrCode() {
-      const name = document.getElementById("appName").value.trim() || "Download App";
-      const ios = document.getElementById("iosUrl").value.trim();
-      const android = document.getElementById("androidUrl").value.trim();
-
-      if (!isValidUrl(ios) || !isValidUrl(android)) {
-        alert("Please enter valid HTTPS iOS and Android store links.");
-        return;
-      }
-
-      const finalUrl = buildDirectSmartLink(name, ios, android);
-      showQrResult(finalUrl);
-    }
-
     function generateConfiguredAppQr(appKey) {
       const finalUrl = buildConfiguredAppSmartLink(appKey);
-      showQrResult(finalUrl);
+      showQrResult(finalUrl, "Safe share link. This QR only uses an app key from configuredApps.");
     }
 
-    function showQrResult(finalUrl) {
+    function showQrResult(finalUrl, note) {
       const qrElement = document.getElementById("qrcode");
       qrElement.innerHTML = "";
 
@@ -365,32 +336,14 @@
 
       document.getElementById("smartLink").textContent = finalUrl;
       document.getElementById("copyStatus").textContent = "";
+      document.getElementById("resultNote").textContent = note;
       document.getElementById("qrBlock").classList.remove("hidden");
-    }
-
-    function clearForm() {
-      document.getElementById("appName").value = "";
-      document.getElementById("iosUrl").value = "";
-      document.getElementById("androidUrl").value = "";
-      document.getElementById("qrcode").innerHTML = "";
-      document.getElementById("smartLink").textContent = "";
-      document.getElementById("copyStatus").textContent = "";
-      document.getElementById("qrBlock").classList.add("hidden");
     }
 
     function buildConfiguredAppSmartLink(appKey) {
       const url = new URL(window.location.href);
       url.search = "";
       url.searchParams.set("app", appKey);
-      return url.toString();
-    }
-
-    function buildDirectSmartLink(name, ios, android) {
-      const url = new URL(window.location.href);
-      url.search = "";
-      url.searchParams.set("name", name);
-      url.searchParams.set("ios", ios);
-      url.searchParams.set("android", android);
       return url.toString();
     }
 
@@ -415,14 +368,6 @@
       }
     }
 
-    function isValidUrl(value) {
-      try {
-        const url = new URL(value);
-        return url.protocol === "https:";
-      } catch {
-        return false;
-      }
-    }
   </script>
 </body>
 </html>
